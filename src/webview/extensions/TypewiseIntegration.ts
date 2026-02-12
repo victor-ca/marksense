@@ -209,8 +209,10 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
 
         // Use start_index_relative_to_end + chars_to_replace from the API
         // to pinpoint exactly which characters to replace (only the final word).
+        // Note: the API returns start_index_relative_to_end as a negative number
+        // (e.g. -5 means "5 chars before the end"), so we use Math.abs().
         const charsToReplace = data.chars_to_replace || 0
-        const relToEnd = data.start_index_relative_to_end || charsToReplace
+        const relToEnd = Math.abs(data.start_index_relative_to_end) || charsToReplace
         const sentenceEnd = blockStart + sentenceText.length
 
         // Position of the word to correct in the document
