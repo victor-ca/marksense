@@ -42,7 +42,7 @@ import {
   useCopyAnchorLink,
 } from "@/components/tiptap-ui/copy-anchor-link-button"
 import { useResetAllFormatting } from "@/components/tiptap-ui/reset-all-formatting-button"
-import { SlashCommandTriggerButton } from "@/components/tiptap-ui/slash-command-trigger-button"
+import { PlusIcon } from "@/components/tiptap-icons/plus-icon"
 import {
   AskAiShortcutBadge,
   useAiAsk,
@@ -458,11 +458,25 @@ export const DragContextMenu: React.FC<DragContextMenuProps> = ({
           }}
         >
           {withSlashCommandTrigger && (
-            <SlashCommandTriggerButton
-              node={node}
-              nodePos={nodePos}
+            <Button
+              type="button"
+              data-style="ghost"
+              tabIndex={-1}
+              aria-label="Insert block"
+              tooltip="Insert block"
               data-weight="small"
-            />
+              onClick={() => {
+                if (!editor || !editor.isEditable || !node) return
+                const insertPos = nodePos + node.nodeSize
+                editor
+                  .chain()
+                  .insertContentAt(insertPos, { type: "paragraph" })
+                  .focus(insertPos + 1)
+                  .run()
+              }}
+            >
+              <PlusIcon className="tiptap-button-icon" />
+            </Button>
           )}
 
           <Menu
@@ -486,9 +500,12 @@ export const DragContextMenu: React.FC<DragContextMenuProps> = ({
                       cursor: "grab",
                       ...(open ? { pointerEvents: "none" } : {}),
                     }}
-                    onMouseDown={() =>
+                    onMouseDown={(e: React.MouseEvent) => {
+                      // Ignore double/triple-click so native word/line
+                      // selection is not hijacked by the drag handle
+                      if (e.detail >= 2) return
                       selectNodeAndHideFloating(editor, nodePos)
-                    }
+                    }}
                   >
                     <GripVerticalIcon className="tiptap-button-icon" />
                   </Button>

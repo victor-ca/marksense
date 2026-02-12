@@ -73,11 +73,20 @@ export function useFloatingToolbarVisibility(params: {
       })
   }, [editor, extraHideWhen, isSelectionValid])
 
-  // --- Selection-driven visibility
+  // --- Selection-driven visibility (with short delay to avoid
+  //     interfering with multi-click sequences like triple-click)
+  const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     if (!editor) return
 
     const handleSelectionUpdate = () => {
+      // Cancel any pending show so we always use the latest selection
+      if (showTimerRef.current) {
+        clearTimeout(showTimerRef.current)
+        showTimerRef.current = null
+      }
+
       const { selection } = editor.state
       const valid = isSelectionValid(editor, selection)
 
@@ -85,13 +94,35 @@ export function useFloatingToolbarVisibility(params: {
         setShouldShow(false)
         return
       }
-      setShouldShow(valid)
+
+      if (!valid) {
+        // Hiding is immediate (no delay)
+        setShouldShow(false)
+        return
+      }
+
+      // Delay showing so triple-click (which rapidly changes selection)
+      // finishes before the toolbar appears and steals the third click
+      showTimerRef.current = setTimeout(() => {
+        showTimerRef.current = null
+        // Re-check because selection may have changed during the delay
+        const { selection: sel } = editor.state
+        const stillValid = isSelectionValid(editor, sel)
+        if (
+          stillValid &&
+          !extraHideWhen &&
+          !(isNodeSelection(sel) && hideRef.current)
+        ) {
+          setShouldShow(true)
+        }
+      }, 350)
     }
 
     handleSelectionUpdate()
     editor.on("selectionUpdate", handleSelectionUpdate)
     return () => {
       editor.off("selectionUpdate", handleSelectionUpdate)
+      if (showTimerRef.current) clearTimeout(showTimerRef.current)
     }
   }, [editor, extraHideWhen, isSelectionValid])
 

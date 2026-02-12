@@ -28,6 +28,7 @@ html,
 body,
 #root,
 #app {
+  height: 100%;
   background-color: var(--tt-bg-color);
 }
 
@@ -53,13 +54,11 @@ body,
   font-family: "DM Sans", sans-serif;
 }
 
-// Important so the this does not override the editor behaviour
-@media screen and (max-width: 480px) {
-  .notion-like-editor-wrapper {
-    width: 100vw;
-    height: 100vh;
-    overflow: auto;
-  }
+.notion-like-editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: auto;
 }
 
 .notion-like-editor-layout {

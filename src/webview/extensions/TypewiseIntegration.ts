@@ -196,6 +196,12 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
     let grammarAbort: AbortController | null = null
     let grammarTimer: ReturnType<typeof setTimeout> | null = null
 
+    // ── Suppress hover popup until mouse actually moves ───────────────
+    // After an auto-correction the browser fires mouseover on the new
+    // decoration even though the pointer hasn't moved. We suppress the
+    // popup until we see a real mousemove.
+    let suppressHoverUntilMove = false
+
     // ── Cached ghost text DOM element (reused to avoid flicker) ──────
     let cachedGhostWrapper: HTMLSpanElement | null = null
     let cachedGhostTextSpan: HTMLSpanElement | null = null
@@ -291,6 +297,8 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
           const { tr } = curState
           tr.insertText(replacementWord, wordFrom, wordTo)
           tr.setMeta(typewisePluginKey, { type: "add-correction", correction })
+          tr.setMeta("addToHistory", false)
+          suppressHoverUntilMove = true
           view.dispatch(tr)
         } else if (
           data.correctionType === "manual" &&
@@ -308,9 +316,9 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
               currentValue: originalWord,
               suggestions: data.suggestions || [],
             }
-            view.dispatch(
-              curState.tr.setMeta(typewisePluginKey, { type: "add-correction", correction })
-            )
+            const manualTr = curState.tr.setMeta(typewisePluginKey, { type: "add-correction", correction })
+            manualTr.setMeta("addToHistory", false)
+            view.dispatch(manualTr)
           }
         }
       } catch (err: any) {
@@ -453,6 +461,8 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
             const { tr } = view.state
             tr.insertText(replacementWord, wordFrom, wordTo)
             tr.setMeta(typewisePluginKey, { type: "add-correction", correction })
+            tr.setMeta("addToHistory", false)
+            suppressHoverUntilMove = true
             view.dispatch(tr)
           } else if (correctionType === "manual") {
             const correction: CorrectionEntry = {
@@ -464,9 +474,9 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
               currentValue: originalWord,
               suggestions,
             }
-            view.dispatch(
-              view.state.tr.setMeta(typewisePluginKey, { type: "add-correction", correction })
-            )
+            const manualTr = view.state.tr.setMeta(typewisePluginKey, { type: "add-correction", correction })
+            manualTr.setMeta("addToHistory", false)
+            view.dispatch(manualTr)
           }
         }
       } catch (err: any) {
@@ -792,7 +802,17 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
             }
             return false
           },
+          mousemove(_view, _event) {
+            // Clear the suppress flag on real mouse movement so
+            // subsequent hovers can open the correction popup.
+            if (suppressHoverUntilMove) suppressHoverUntilMove = false
+            return false
+          },
           mouseover(view, event) {
+            // Skip if hover is suppressed (mouse was stationary when a
+            // new correction decoration appeared under the pointer).
+            if (suppressHoverUntilMove) return false
+
             const target = event.target as HTMLElement
             const corrId =
               target?.getAttribute("data-tw-correction-id") ||

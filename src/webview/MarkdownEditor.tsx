@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { EditorContent, EditorContext, useEditor } from "@tiptap/react"
+import { TextSelection } from "@tiptap/pm/state"
 import { createPortal } from "react-dom"
 
 // --- Tiptap Core Extensions ---
@@ -152,6 +153,9 @@ function MarkdownEditorInner() {
   const [currentMarkdown, setCurrentMarkdown] = useState(
     window.__INITIAL_CONTENT__ || ""
   )
+  const [rawMode, setRawMode] = useState(false)
+  const [rawContent, setRawContent] = useState("")
+  const rawContentOriginal = useRef("")
 
   const typewiseToken = window.__SETTINGS__?.typewiseToken || ""
 
@@ -270,6 +274,59 @@ function MarkdownEditorInner() {
     },
   })
 
+  // --- Triple-click to select block (DOM-level handler) ----
+  // ProseMirror tracks its own click counter on mousedown, but React
+  // re-renders between clicks can disrupt it. This handler runs in the
+  // capture phase before ProseMirror sees the event, tracks clicks
+  // manually, and forces the block selection on the third click.
+  useEffect(() => {
+    if (!editor) return
+    const dom = editor.view.dom
+
+    let clickCount = 0
+    let lastTime = 0
+    let lastX = 0
+    let lastY = 0
+
+    const onMouseDown = (e: MouseEvent) => {
+      const now = Date.now()
+      const dx = e.clientX - lastX
+      const dy = e.clientY - lastY
+      const isNear = dx * dx + dy * dy < 100
+
+      if (now - lastTime < 500 && isNear && e.button === 0) {
+        clickCount++
+      } else {
+        clickCount = 1
+      }
+      lastTime = now
+      lastX = e.clientX
+      lastY = e.clientY
+
+      if (clickCount >= 3) {
+        // Prevent ProseMirror from processing this as a single click
+        e.stopPropagation()
+        e.preventDefault()
+
+        const pos = editor.view.posAtCoords({ left: e.clientX, top: e.clientY })
+        if (pos) {
+          const $pos = editor.state.doc.resolve(pos.pos)
+          editor.view.dispatch(
+            editor.state.tr.setSelection(
+              TextSelection.create(editor.state.doc, $pos.start(), $pos.end())
+            )
+          )
+        }
+        // Reset counter so further rapid clicks don't keep firing
+        clickCount = 0
+      }
+    }
+
+    // Capture phase so we run BEFORE ProseMirror's bubble-phase listener
+    dom.addEventListener("mousedown", onMouseDown, { capture: true })
+    return () => dom.removeEventListener("mousedown", onMouseDown, { capture: true })
+  }, [editor])
+
   // --- Avoid selecting non-text nodes (e.g. horizontal rule) on init ---
   useEffect(() => {
     if (!editor) return
@@ -295,11 +352,20 @@ function MarkdownEditorInner() {
       const message = event.data
       if (message.type === "update" && editor && !editor.isDestroyed) {
         isExternalUpdate.current = true
-        editor.commands.setContent(message.content, false, {
-          // @ts-ignore
+        // Temporarily wrap dispatch so the setContent transaction is
+        // marked as non-undoable (external syncs shouldn't pollute undo stack)
+        const origDispatch = editor.view.dispatch.bind(editor.view)
+        editor.view.dispatch = (tr: any) => {
+          tr.setMeta("addToHistory", false)
+          origDispatch(tr)
+        }
+        // @ts-ignore — contentType option provided by @tiptap/markdown
+        editor.commands.setContent(message.content, {
           contentType: "markdown",
+          emitUpdate: false,
         })
         setCurrentMarkdown(message.content)
+        editor.view.dispatch = origDispatch
         requestAnimationFrame(() => {
           isExternalUpdate.current = false
         })
@@ -332,16 +398,48 @@ function MarkdownEditorInner() {
     }
   }, [])
 
+  // ── Raw markdown toggle ────────────────────────────────────────────
+  const handleToggleRawMode = useCallback(() => {
+    if (!editor || editor.isDestroyed) return
+
+    if (!rawMode) {
+      // Entering raw mode: capture current markdown
+      // @ts-ignore — getMarkdown available via @tiptap/markdown
+      const md = editor.getMarkdown()
+      setRawContent(md)
+      rawContentOriginal.current = md
+    } else {
+      // Leaving raw mode: only re-parse if the user actually edited the markdown
+      if (rawContent !== rawContentOriginal.current) {
+        isExternalUpdate.current = true
+        // @ts-ignore — contentType option provided by @tiptap/markdown
+        editor.commands.setContent(rawContent, {
+          contentType: "markdown",
+          emitUpdate: false,
+        })
+        requestAnimationFrame(() => {
+          isExternalUpdate.current = false
+        })
+      }
+    }
+    setRawMode((prev) => !prev)
+  }, [editor, rawMode, rawContent])
+
   if (!editor) {
     return <LoadingSpinner />
   }
 
+  // Determine which special mode is active (diff takes precedence)
+  const showDiff = isDiffMode && headContent !== null
+  const showRaw = rawMode && !showDiff
+  const showEditor = !showDiff && !showRaw
+
   return (
     <div className="notion-like-editor-wrapper">
       <EditorContext.Provider value={{ editor }}>
-        <NotionEditorHeader />
+        <NotionEditorHeader rawMode={rawMode} onToggleRawMode={handleToggleRawMode} />
 
-        {isDiffMode && headContent !== null ? (
+        {showDiff && (
           <div className="notion-like-editor-layout">
             <div className="notion-like-editor-content">
               <div className="tiptap ProseMirror notion-like-editor" style={{ flex: 1, padding: "3rem 3rem 30vh" }}>
@@ -352,7 +450,31 @@ function MarkdownEditorInner() {
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {showRaw && (
+          <div className="raw-markdown-container">
+            <textarea
+              className="raw-markdown-editor"
+              value={rawContent}
+              onChange={(e) => {
+                const val = e.target.value
+                setRawContent(val)
+
+                // Sync back to VS Code with debounce
+                if (debounceTimer.current) clearTimeout(debounceTimer.current)
+                debounceTimer.current = setTimeout(() => {
+                  vscode.postMessage({ type: "edit", content: val })
+                }, 150)
+              }}
+              spellCheck={false}
+              autoComplete="off"
+              autoCorrect="off"
+            />
+          </div>
+        )}
+
+        {showEditor && (
           <>
             <div className="notion-like-editor-layout">
               <MarkdownEditorContent editor={editor} />
@@ -373,7 +495,7 @@ function MarkdownEditorInner() {
           </>
         )}
       </EditorContext.Provider>
-      {!isDiffMode && <CorrectionPopup editor={editor} />}
+      {!isDiffMode && !rawMode && <CorrectionPopup editor={editor} />}
     </div>
   )
 }

@@ -541,3 +541,48 @@
   font-family: inherit;
   margin-right: 3px;
 }
+
+/* ═══ Raw Markdown Editor ═══ */
+
+.raw-markdown-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  padding: 0;
+}
+
+.raw-markdown-editor {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 2rem 3.5rem;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: "SFMono-Regular", "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+  tab-size: 4;
+  color: var(--tt-theme-text, var(--tt-gray-light-900));
+  background: var(--tt-bg-color, #fff);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+}
+
+.dark .raw-markdown-editor {
+  color: var(--tt-theme-text, var(--tt-gray-dark-900));
+  background: var(--tt-bg-color, #0e0e11);
+}
+
+/* Active state for the raw mode toggle button */
+.raw-mode-active {
+  background: var(--tt-gray-light-a-100, rgba(15, 22, 36, 0.05)) !important;
+  color: var(--tt-brand-color-500, #6229ff) !important;
+}
+
+.dark .raw-mode-active {
+  background: var(--tt-gray-dark-a-200, rgba(238, 238, 246, 0.11)) !important;
+  color: var(--tt-brand-color-400, #7a52ff) !important;
+}

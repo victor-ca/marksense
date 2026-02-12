@@ -315,6 +315,11 @@ export function CorrectionPopup({ editor }: CorrectionPopupProps) {
       ref={popupRef}
       className="typewise-popup"
       style={{ top: position.top, left: position.left }}
+      onMouseDown={(e) => {
+        // Stop propagation so the document-level click-outside handler
+        // doesn't close the popup before onClick fires on buttons
+        e.stopPropagation()
+      }}
     >
       <div className="typewise-popup-items">
         {menuItems.map((item, i) => {
@@ -326,6 +331,10 @@ export function CorrectionPopup({ editor }: CorrectionPopupProps) {
             <button
               key={`${item.value}-${item.action}-${i}`}
               className={`typewise-popup-item${item.isHighlighted ? " is-highlighted" : ""}`}
+              onMouseDown={(e) => {
+                // Prevent editor focus loss so the click completes reliably
+                e.preventDefault()
+              }}
               onClick={() => applyItem(item)}
             >
               {item.icon && (
