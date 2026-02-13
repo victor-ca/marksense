@@ -74,10 +74,11 @@ export function NotionEditorHeader({ rawMode, onToggleRawMode }: NotionEditorHea
 
         <Button
           onClick={toggleDiffMode}
-          tooltip="Show Changes"
+          tooltip={rawMode ? "Show Changes (not available in raw mode)" : "Show Changes"}
           data-style="ghost"
           data-active-state={isDiffMode ? "on" : undefined}
           aria-label="Toggle diff view"
+          disabled={rawMode}
         >
           <DiffToggleIcon />
         </Button>

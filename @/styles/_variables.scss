@@ -61,18 +61,18 @@
   --tt-gray-dark-800: rgba(224, 224, 225, 1);
   --tt-gray-dark-900: rgba(245, 245, 245, 1);
 
-  /* Brand colors */
-  --tt-brand-color-50: rgba(239, 238, 255, 1);
-  --tt-brand-color-100: rgba(222, 219, 255, 1);
-  --tt-brand-color-200: rgba(195, 189, 255, 1);
-  --tt-brand-color-300: rgba(157, 138, 255, 1);
-  --tt-brand-color-400: rgba(122, 82, 255, 1);
-  --tt-brand-color-500: rgba(98, 41, 255, 1);
-  --tt-brand-color-600: rgba(84, 0, 229, 1);
-  --tt-brand-color-700: rgba(75, 0, 204, 1);
-  --tt-brand-color-800: rgba(56, 0, 153, 1);
-  --tt-brand-color-900: rgba(43, 25, 102, 1);
-  --tt-brand-color-950: hsla(257, 100%, 9%, 1);
+  /* Brand colors — Modern Blue */
+  --tt-brand-color-50: rgba(239, 246, 255, 1);
+  --tt-brand-color-100: rgba(219, 234, 254, 1);
+  --tt-brand-color-200: rgba(191, 219, 254, 1);
+  --tt-brand-color-300: rgba(147, 197, 253, 1);
+  --tt-brand-color-400: rgba(96, 165, 250, 1);
+  --tt-brand-color-500: rgba(59, 130, 246, 1);
+  --tt-brand-color-600: rgba(37, 99, 235, 1);
+  --tt-brand-color-700: rgba(29, 78, 216, 1);
+  --tt-brand-color-800: rgba(30, 64, 175, 1);
+  --tt-brand-color-900: rgba(30, 58, 138, 1);
+  --tt-brand-color-950: hsla(226, 57%, 17%, 1);
 
   /* Green */
   --tt-color-green-inc-5: hsla(129, 100%, 97%, 1);
@@ -183,7 +183,7 @@
   --tt-sidebar-bg-color: var(--tt-gray-light-100);
   --tt-scrollbar-color: var(--tt-gray-light-a-200);
   --tt-cursor-color: var(--tt-brand-color-500);
-  --tt-selection-color: rgba(157, 138, 255, 0.2);
+  --tt-selection-color: rgba(59, 130, 246, 0.15);
   --tt-card-bg-color: var(--white);
   --tt-card-border-color: var(--tt-gray-light-a-100);
 }
@@ -196,7 +196,7 @@
   --tt-sidebar-bg-color: var(--tt-gray-dark-100);
   --tt-scrollbar-color: var(--tt-gray-dark-a-200);
   --tt-cursor-color: var(--tt-brand-color-400);
-  --tt-selection-color: rgba(122, 82, 255, 0.2);
+  --tt-selection-color: rgba(96, 165, 250, 0.18);
   --tt-card-bg-color: var(--tt-gray-dark-50);
   --tt-card-border-color: var(--tt-gray-dark-a-50);
 
@@ -295,10 +295,10 @@
   --tt-color-highlight-pink-contrast: rgba(220, 76, 145, 0.22);
 }
 
-/* ═══ Typewise: corrections, predictions, popup ═══ */
+/* ═══ Corrections, predictions, popup ═══ */
 
 /* ── Red underline (manual / spelling correction) ── */
-.typewise-underline-red {
+.correction-underline-red {
   text-decoration: solid underline;
   text-decoration-color: var(--tw-error-main, #e34a4a);
   text-underline-offset: 3px;
@@ -307,13 +307,13 @@
   border-radius: 1px;
   transition: text-decoration-thickness 100ms ease-out, background 100ms ease-out;
 }
-.typewise-underline-red:hover {
+.correction-underline-red:hover {
   text-decoration-thickness: 2px;
   background: rgba(227, 74, 74, 0.16);
 }
 
 /* ── Blue underline (auto correction) ── */
-.typewise-underline-blue {
+.correction-underline-blue {
   text-decoration: solid underline;
   text-decoration-color: var(--tw-primary-main, #3c61e2);
   text-underline-offset: 3px;
@@ -322,28 +322,28 @@
   border-radius: 1px;
   transition: text-decoration-thickness 100ms ease-out, background 100ms ease-out;
 }
-.typewise-underline-blue:hover {
+.correction-underline-blue:hover {
   text-decoration-thickness: 2px;
   background: rgba(60, 97, 226, 0.16);
 }
 
 /* ── Ghost text (predictions) ── */
-.typewise-ghost-wrapper {
+.prediction-ghost-wrapper {
   pointer-events: none;
   user-select: none;
   display: inline;
 }
 
-.typewise-ghost-text {
+.prediction-ghost-text {
   opacity: 0.35;
 }
 
-.dark .typewise-ghost-text {
+.dark .prediction-ghost-text {
   opacity: 0.4;
 }
 
 /* ── Correction popup ── */
-.typewise-popup {
+.correction-popup {
   position: fixed;
   z-index: 9999;
   min-width: 216px;
@@ -355,27 +355,27 @@
   overflow: hidden;
   font-size: 13px;
   line-height: 1.4;
-  animation: typewise-popup-in 0.12s ease-out;
+  animation: correction-popup-in 0.12s ease-out;
 }
 
-@keyframes typewise-popup-in {
+@keyframes correction-popup-in {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.typewise-popup-items {
+.correction-popup-items {
   padding: 4px;
 }
 
 /* ── Divider ── */
-.typewise-popup-divider {
+.correction-popup-divider {
   height: 1px;
   margin: 4px 8px;
   background: var(--vscode-editorWidget-border, var(--tt-border-color-tint, rgba(0, 0, 0, 0.08)));
 }
 
 /* ── Menu item ── */
-.typewise-popup-item {
+.correction-popup-item {
   display: flex;
   align-items: center;
   width: 100%;
@@ -392,29 +392,29 @@
   transition: background 0.1s;
 }
 
-.typewise-popup-item:hover,
-.typewise-popup-item:focus-visible {
+.correction-popup-item:hover,
+.correction-popup-item:focus-visible {
   background: var(--vscode-list-hoverBackground, var(--tt-gray-light-a-50));
   outline: none;
 }
 
 /* Highlighted first item (accepted value) */
-.typewise-popup-item.is-highlighted {
+.correction-popup-item.is-highlighted {
   background: var(--tw-primary-main, #3c61e2);
   color: #fff;
 }
-.typewise-popup-item.is-highlighted:hover {
+.correction-popup-item.is-highlighted:hover {
   background: var(--tw-primary-dark, #2d4cc4);
 }
-.typewise-popup-item.is-highlighted .tw-icon {
+.correction-popup-item.is-highlighted .tw-icon {
   color: #fff;
 }
-.typewise-popup-item.is-highlighted .typewise-popup-item-enter .tw-icon {
+.correction-popup-item.is-highlighted .correction-popup-item-enter .tw-icon {
   color: rgba(255, 255, 255, 0.7);
 }
 
 /* ── Icon ── */
-.typewise-popup-item-icon {
+.correction-popup-item-icon {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -428,15 +428,15 @@
   vertical-align: middle;
 }
 
-.typewise-popup-item:hover .tw-icon {
+.correction-popup-item:hover .tw-icon {
   color: var(--tw-primary-main, #3c61e2);
 }
-.typewise-popup-item.is-highlighted:hover .tw-icon {
+.correction-popup-item.is-highlighted:hover .tw-icon {
   color: #fff;
 }
 
 /* ── Item content (title + label stacked) ── */
-.typewise-popup-item-content {
+.correction-popup-item-content {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -444,7 +444,7 @@
   min-width: 0;
 }
 
-.typewise-popup-item-title {
+.correction-popup-item-title {
   font-size: 10px;
   font-weight: 500;
   line-height: 1.2;
@@ -452,24 +452,24 @@
   margin-bottom: 1px;
 }
 
-.typewise-popup-item-label {
+.correction-popup-item-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
 }
 
-.typewise-popup-item-label em {
+.correction-popup-item-label em {
   font-style: italic;
 }
 
 /* Only suggestion items with titles get bold labels; others use normal weight */
-.typewise-popup-item:not(.is-highlighted) .typewise-popup-item-content:not(:has(.typewise-popup-item-title)) .typewise-popup-item-label {
+.correction-popup-item:not(.is-highlighted) .correction-popup-item-content:not(:has(.correction-popup-item-title)) .correction-popup-item-label {
   font-weight: 400;
 }
 
 /* ── Shortcut badge ── */
-.typewise-popup-item-shortcut {
+.correction-popup-item-shortcut {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -485,7 +485,7 @@
 }
 
 /* ── Enter icon (on highlighted item) ── */
-.typewise-popup-item-enter {
+.correction-popup-item-enter {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -494,43 +494,21 @@
 }
 
 /* ── Footer ── */
-.typewise-popup-footer {
+.correction-popup-footer {
   padding: 5px 10px;
   border-top: 1px solid var(--vscode-editorWidget-border, var(--tt-border-color-tint));
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.typewise-popup-footer-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--vscode-descriptionForeground, var(--tt-gray-light-a-500));
-}
-
-.typewise-popup-footer-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-.typewise-popup-footer-logo svg {
-  width: 16px;
-  height: 16px;
-}
-
-.typewise-popup-footer-hint {
+.correction-popup-footer-hint {
   font-size: 11px;
   color: var(--vscode-descriptionForeground, var(--tt-gray-light-a-400));
 }
 
-.typewise-popup-footer-hint kbd {
+.correction-popup-footer-hint kbd {
   display: inline-block;
   padding: 0 4px;
   font-size: 10px;
@@ -560,6 +538,11 @@
   border: none;
   outline: none;
   resize: none;
+
+  &:focus {
+    border: none;
+    outline: none;
+  }
   font-family: "SFMono-Regular", "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
   font-size: 13.5px;
   line-height: 1.7;

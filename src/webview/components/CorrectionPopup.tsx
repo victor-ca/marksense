@@ -313,7 +313,7 @@ export function CorrectionPopup({ editor }: CorrectionPopupProps) {
   return createPortal(
     <div
       ref={popupRef}
-      className="typewise-popup"
+      className="correction-popup"
       style={{ top: position.top, left: position.left }}
       onMouseDown={(e) => {
         // Stop propagation so the document-level click-outside handler
@@ -321,16 +321,16 @@ export function CorrectionPopup({ editor }: CorrectionPopupProps) {
         e.stopPropagation()
       }}
     >
-      <div className="typewise-popup-items">
+      <div className="correction-popup-items">
         {menuItems.map((item, i) => {
           if (isDivider(item)) {
-            return <div key={`div-${i}`} className="typewise-popup-divider" />
+            return <div key={`div-${i}`} className="correction-popup-divider" />
           }
 
           return (
             <button
               key={`${item.value}-${item.action}-${i}`}
-              className={`typewise-popup-item${item.isHighlighted ? " is-highlighted" : ""}`}
+              className={`correction-popup-item${item.isHighlighted ? " is-highlighted" : ""}`}
               onMouseDown={(e) => {
                 // Prevent editor focus loss so the click completes reliably
                 e.preventDefault()
@@ -338,37 +338,26 @@ export function CorrectionPopup({ editor }: CorrectionPopupProps) {
               onClick={() => applyItem(item)}
             >
               {item.icon && (
-                <span className="typewise-popup-item-icon">{item.icon}</span>
+                <span className="correction-popup-item-icon">{item.icon}</span>
               )}
-              <span className="typewise-popup-item-content">
+              <span className="correction-popup-item-content">
                 {item.title && (
-                  <span className="typewise-popup-item-title">{item.title}</span>
+                  <span className="correction-popup-item-title">{item.title}</span>
                 )}
-                <span className="typewise-popup-item-label">{item.label}</span>
+                <span className="correction-popup-item-label">{item.label}</span>
               </span>
               {item.shortcut != null && (
-                <span className="typewise-popup-item-shortcut">{item.shortcut}</span>
+                <span className="correction-popup-item-shortcut">{item.shortcut}</span>
               )}
               {item.isHighlighted && (
-                <span className="typewise-popup-item-enter"><IconReturn /></span>
+                <span className="correction-popup-item-enter"><IconReturn /></span>
               )}
             </button>
           )
         })}
       </div>
-      <div className="typewise-popup-footer">
-        <span className="typewise-popup-footer-brand">
-          <span className="typewise-popup-footer-logo">
-            <svg viewBox="0 0 76 76" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#1D58E2" d="M32.038 75.798a238.057 238.057 0 0 0 29.672-8.16 9.697 9.697 0 0 0 6.008-6.008 247.641 247.641 0 0 0 8.112-29.68 9.368 9.368 0 0 0-2.056-8A235.386 235.386 0 0 0 52.006 2.222a9.192 9.192 0 0 0-8-2 235.951 235.951 0 0 0-29.68 8.168 9.663 9.663 0 0 0-6.008 6.008A244.152 244.152 0 0 0 .198 44.07a9.36 9.36 0 0 0 2.048 8 236.358 236.358 0 0 0 21.768 21.72 9.503 9.503 0 0 0 8 2"/>
-              <path fill="#fff" d="M34.19 39.294a2.201 2.201 0 0 0-2.672 1.6l-1.72 7.488a4.951 4.951 0 0 1-9.056 1.488 5.104 5.104 0 0 1-.616-3.744l4.512-24.336a2.247 2.247 0 1 0-4.416-.8l-1.624 8.704-5.952 2a2.201 2.201 0 0 0-1.392 2.824 2.272 2.272 0 0 0 2.208 1.544c.21-.01.416-.045.616-.104l3.6-1.184-1.952 10.4a9.472 9.472 0 0 0 9.6 11.504 9.552 9.552 0 0 0 4.472-1.368 9.24 9.24 0 0 0 4.208-5.848l1.744-7.448a2.175 2.175 0 0 0-1.56-2.72Z"/>
-              <path fill="#fff" d="M31.006 27.894a2.199 2.199 0 0 0-2.808-1.384l-2.047.664-.88 4.984 4.311-1.44a2.24 2.24 0 0 0 1.424-2.824ZM41.07 52.486a8.352 8.352 0 0 1-2.567-.216 9.226 9.226 0 0 1-5.856-4.208 9.12 9.12 0 0 1-1.128-7.088 2.217 2.217 0 1 1 4.312 1.032 4.951 4.951 0 0 0 3.696 5.952 4.952 4.952 0 0 0 5.96-3.696l1.744-7.44a2.218 2.218 0 0 1 2.67-1.657 2.217 2.217 0 0 1 1.642 2.68l-1.744 7.409a9.264 9.264 0 0 1-4.208 5.848 8.801 8.801 0 0 1-4.52 1.384Z"/>
-              <path fill="#fff" d="M56.783 48.334a9.521 9.521 0 0 1-8.424-4.472 9.11 9.11 0 0 1-1.128-7.08 2.216 2.216 0 1 1 4.312 1.024 4.944 4.944 0 0 0 3.696 5.952 4.992 4.992 0 0 0 5.96-3.64l1.744-7.448a2.217 2.217 0 0 1 4.312 1.032l-1.744 7.44a9.393 9.393 0 0 1-8.728 7.192Z"/>
-            </svg>
-          </span>
-          Typewise
-        </span>
-        <span className="typewise-popup-footer-hint">
+      <div className="correction-popup-footer">
+        <span className="correction-popup-footer-hint">
           <kbd>Esc</kbd> Close
         </span>
       </div>

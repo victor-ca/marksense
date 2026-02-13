@@ -7,8 +7,8 @@ A VS Code / Cursor extension that lets you view and edit Markdown files in a ric
 - **Notion-like editing** — full block-based editor with slash commands, drag & drop, floating toolbars, and rich formatting
 - **Markdown round-trip** — opens `.md` / `.mdx` files, edits in rich text, saves back as clean Markdown
 - **Instant auto-save** — every edit syncs to the file automatically (configurable debounce)
-- **AI assistance** — inline AI tools for writing, improving, and generating content (requires Tiptap Cloud credentials)
-- **Spellcheck** — browser-level spell checking enabled by default
+- **Inline predictions** — sentence completion powered by [Typewise](https://www.typewise.ai) (requires API token)
+- **Spellcheck & grammar** — autocorrect and grammar correction powered by [Typewise](https://www.typewise.ai)
 - **Dark / light mode** — follows your VS Code theme
 - **Emoji, mentions, tables, task lists, code blocks, math, and more**
 
@@ -35,26 +35,51 @@ Then press **F5** to launch the Extension Development Host.
 
 Open any `.md` or `.mdx` file, then right-click the editor tab and choose **Reopen Editor With… > Marksense Editor**.
 
+### Making Marksense the default editor
+
+#### For a single file
+
+Right-click the editor tab → **Reopen Editor With…** → **Marksense Editor** → click **Configure default editor for '*.md'…** at the bottom of the picker and select **Marksense Editor**. This writes the preference to your workspace settings.
+
+#### For a project
+
+Add to `.vscode/settings.json` in your project:
+
+```json
+{
+  "workbench.editorAssociations": {
+    "*.md": "marksense.editor"
+  }
+}
+```
+
+#### Globally (all projects)
+
+Open your **User** settings (`Ctrl+Shift+P` / `Cmd+Shift+P` → **Preferences: Open User Settings (JSON)**) and add:
+
+```json
+{
+  "workbench.editorAssociations": {
+    "*.md": "marksense.editor"
+  }
+}
+```
+
+> To revert back to the built-in text editor, change the value to `"default"` or remove the entry.
+
 ## Configuration
 
 | Setting                   | Default | Description                              |
 | ------------------------- | ------- | ---------------------------------------- |
-| `marksense.aiAppId`       | `""`    | Tiptap Cloud AI App ID                   |
-| `marksense.aiToken`       | `""`    | Tiptap Cloud AI JWT Token                |
 | `marksense.autoSaveDelay` | `300`   | Debounce delay (ms) before syncing edits |
 
-### AI setup (optional)
+### Typewise AI setup (optional)
 
-Add your Tiptap Cloud credentials to a `.env` file in the project root:
+Marksense can use [Typewise](https://www.typewise.ai) for autocorrect, grammar correction, and sentence completion. To enable it, add your API token to a `.env` file in the project root (or in the extension directory):
 
 ```
-TIPTAP_AI_APP_ID=your-app-id
-TIPTAP_AI_TOKEN=your-jwt-token
+TYPEWISE_TOKEN=your-typewise-api-token
 ```
-
-Or configure them in VS Code settings under **Marksense**.
-
-Get credentials at [https://cloud.tiptap.dev](https://cloud.tiptap.dev).
 
 ## Packaging
 

@@ -57,6 +57,10 @@ export const SuggestionMenu = ({
   const [internalQuery, setInternalQuery] = useState<string>("")
   const [, setInternalRange] = useState<Range | null>(null)
 
+  const isTypingRef = useRef(false)
+  const dismissedRef = useRef(false)
+  const isActiveRef = useRef(false)
+
   const { ref, style, getFloatingProps, isMounted } = useFloatingElement(
     show,
     internalDecorationNode,
@@ -87,7 +91,11 @@ export const SuggestionMenu = ({
       ],
       onOpenChange(open) {
         if (!open) {
+          dismissedRef.current = true
           setShow(false)
+          if (editor && !editor.isDestroyed) {
+            editor.view.dispatch(editor.view.state.tr)
+          }
         }
       },
       ...floatingOptions,
@@ -103,6 +111,24 @@ export const SuggestionMenu = ({
   const closePopup = useCallback(() => {
     setShow(false)
   }, [])
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+
+    const handler = ({ transaction }: { transaction: any }) => {
+      if (transaction.docChanged) {
+        isTypingRef.current = true
+        dismissedRef.current = false
+      } else {
+        isTypingRef.current = false
+      }
+    }
+
+    editor.on("transaction", handler)
+    return () => {
+      editor.off("transaction", handler)
+    }
+  }, [editor])
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -122,6 +148,14 @@ export const SuggestionMenu = ({
       editor,
 
       allow(props) {
+        if (dismissedRef.current) {
+          return false
+        }
+
+        if (!isActiveRef.current && !isTypingRef.current) {
+          return false
+        }
+
         const $from = editor.state.doc.resolve(props.range.from)
 
         // Check if we're inside an image node
@@ -187,6 +221,7 @@ export const SuggestionMenu = ({
       render: () => {
         return {
           onStart: (props: SuggestionProps<SuggestionItem>) => {
+            isActiveRef.current = true
             setInternalDecorationNode(
               (props.decorationNode as HTMLElement) ?? null
             )
@@ -211,13 +246,16 @@ export const SuggestionMenu = ({
 
           onKeyDown: (props: SuggestionKeyDownProps) => {
             if (props.event.key === "Escape") {
+              dismissedRef.current = true
               closePopup()
+              props.view.dispatch(props.view.state.tr)
               return true
             }
             return false
           },
 
           onExit: () => {
+            isActiveRef.current = false
             setInternalDecorationNode(null)
             setInternalCommand(null)
             setInternalItems([])

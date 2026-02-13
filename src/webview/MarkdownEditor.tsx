@@ -161,7 +161,7 @@ function MarkdownEditorInner() {
   const isExternalUpdate = useRef(false)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { setTocContent } = useToc()
-  const { isDiffMode, headContent, setHeadContent } = useDiff()
+  const { isDiffMode, headContent, setHeadContent, exitDiffMode } = useDiff()
 
   // --- Parse the initial file content into frontmatter + body (once) ---
   const [initialParsed] = useState(() => {
@@ -367,21 +367,22 @@ function MarkdownEditorInner() {
     return () => dom.removeEventListener("mousedown", onMouseDown, { capture: true })
   }, [editor])
 
-  // --- Avoid selecting non-text nodes (e.g. horizontal rule) on init ---
+  // --- Place a collapsed cursor at the start without visually focusing ---
+  // This avoids accidentally creating a node selection that highlights
+  // the first block (e.g. a heading) when nothing is selected.
   useEffect(() => {
     if (!editor) return
-    // Defer to allow the editor to fully render
     requestAnimationFrame(() => {
       if (editor.isDestroyed) return
       try {
-        editor.commands.focus("start", { scrollIntoView: false })
+        const { doc } = editor.state
+        // Find the first valid text cursor position (usually pos 1)
+        const sel = TextSelection.near(doc.resolve(1))
+        const tr = editor.state.tr.setSelection(sel)
+        tr.setMeta("addToHistory", false)
+        editor.view.dispatch(tr)
       } catch {
-        // fallback: focus end if start isn't a valid text position
-        try {
-          editor.commands.focus("end", { scrollIntoView: false })
-        } catch {
-          // ignore — editor may not have focusable content
-        }
+        // ignore — editor may not have focusable content
       }
     })
   }, [editor])
@@ -470,6 +471,9 @@ function MarkdownEditorInner() {
     if (!editor || editor.isDestroyed) return
 
     if (!rawMode) {
+      // Diff view is not supported in raw mode, so exit it first
+      if (isDiffMode) exitDiffMode()
+
       // Entering raw mode: show the full file content (frontmatter + body)
       // @ts-ignore — getMarkdown available via @tiptap/markdown
       const md = editor.getMarkdown()
@@ -502,7 +506,7 @@ function MarkdownEditorInner() {
       }
     }
     setRawMode((prev) => !prev)
-  }, [editor, rawMode, rawContent])
+  }, [editor, rawMode, rawContent, isDiffMode, exitDiffMode])
 
   // ── Frontmatter change handler ─────────────────────────────────────
   const handleFrontmatterChange = useCallback(

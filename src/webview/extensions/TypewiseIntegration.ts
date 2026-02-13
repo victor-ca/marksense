@@ -209,10 +209,10 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
     function getOrCreateGhostElement(ghostText: string): HTMLSpanElement {
       if (!cachedGhostWrapper) {
         cachedGhostWrapper = document.createElement("span")
-        cachedGhostWrapper.className = "typewise-ghost-wrapper"
+        cachedGhostWrapper.className = "prediction-ghost-wrapper"
 
         cachedGhostTextSpan = document.createElement("span")
-        cachedGhostTextSpan.className = "typewise-ghost-text"
+        cachedGhostTextSpan.className = "prediction-ghost-text"
         cachedGhostWrapper.appendChild(cachedGhostTextSpan)
       }
       cachedGhostTextSpan!.textContent = ghostText
@@ -582,7 +582,7 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
         if (c.from >= 0 && c.to <= doc.content.size && c.from < c.to) {
           decos.push(
             Decoration.inline(c.from, c.to, {
-              class: c.type === "auto" ? "typewise-underline-blue" : "typewise-underline-red",
+              class: c.type === "auto" ? "correction-underline-blue" : "correction-underline-red",
               "data-tw-correction-id": c.id,
             })
           )

@@ -3,24 +3,24 @@
   --tt-toc-sidebar-line-bg-active: var(--tt-gray-light-900);
   --tt-toc-sidebar-bg: var(--white);
   --tt-toc-sidebar-border-color: var(--tt-gray-light-a-100);
-  --tt-toc-sidebar-text-color: var(--tt-gray-light-a-600);
+  --tt-toc-sidebar-text-color: var(--tt-gray-light-a-500);
   --tt-toc-sidebar-text-hover-color: var(--tt-gray-light-a-800);
-  --tt-toc-sidebar-bg-hover-color: var(--tt-gray-light-a-100);
-  --tt-toc-sidebar-text-active-color: var(--tt-brand-color-500);
+  --tt-toc-sidebar-bg-hover-color: var(--tt-gray-light-a-50);
+  --tt-toc-sidebar-text-active-color: var(--tt-brand-color-600);
 
   /* TOC spacing configuration */
-  --toc-indent: 0.75rem; // Base spacing per level (12px)
-  --toc-depth-factor: 1; // Global multiplier
-  --toc-progress-indent: 0.25rem; // Base indent for progress lines (4px)
-  --toc-progress-width-base: 1rem; // Base width for progress lines (16px)
-  --toc-progress-width-min: 0.25rem; // Minimum width for progress lines (4px)
+  --toc-indent: 0.75rem;
+  --toc-depth-factor: 1;
+  --toc-progress-indent: 0.25rem;
+  --toc-progress-width-base: 1rem;
+  --toc-progress-width-min: 0.25rem;
 
   .dark & {
     --tt-toc-sidebar-line-bg: var(--tt-gray-dark-200);
     --tt-toc-sidebar-line-bg-active: var(--tt-gray-dark-900);
     --tt-toc-sidebar-bg: var(--tt-gray-dark-200);
     --tt-toc-sidebar-border-color: var(--tt-gray-dark-a-100);
-    --tt-toc-sidebar-text-color: var(--tt-gray-dark-a-600);
+    --tt-toc-sidebar-text-color: var(--tt-gray-dark-a-500);
     --tt-toc-sidebar-text-hover-color: var(--tt-gray-dark-a-800);
     --tt-toc-sidebar-bg-hover-color: var(--tt-gray-dark-a-100);
     --tt-toc-sidebar-text-active-color: var(--tt-brand-color-400);
@@ -82,13 +82,11 @@
       background-color: var(--tt-toc-sidebar-line-bg);
       transition: background-color 0.3s ease;
 
-      // Dynamic margin based on depth
       margin-left: calc(
         var(--toc-progress-indent) * (var(--toc-depth, 1) - 1) *
           var(--toc-depth-factor)
       );
 
-      // Dynamic width based on depth (narrower at deeper levels)
       width: max(
         var(--toc-progress-width-min),
         calc(
@@ -101,25 +99,12 @@
         background-color: var(--tt-toc-sidebar-line-bg-active);
       }
 
-      // Fallback mappings in case inline style is missing
-      &[data-depth="1"] {
-        --toc-depth: 1;
-      }
-      &[data-depth="2"] {
-        --toc-depth: 2;
-      }
-      &[data-depth="3"] {
-        --toc-depth: 3;
-      }
-      &[data-depth="4"] {
-        --toc-depth: 4;
-      }
-      &[data-depth="5"] {
-        --toc-depth: 5;
-      }
-      &[data-depth="6"] {
-        --toc-depth: 6;
-      }
+      &[data-depth="1"] { --toc-depth: 1; }
+      &[data-depth="2"] { --toc-depth: 2; }
+      &[data-depth="3"] { --toc-depth: 3; }
+      &[data-depth="4"] { --toc-depth: 4; }
+      &[data-depth="5"] { --toc-depth: 5; }
+      &[data-depth="6"] { --toc-depth: 6; }
     }
   }
 
@@ -171,9 +156,9 @@
     min-height: 1.5rem;
     padding-block: 0.25rem;
     padding-inline: 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 400;
-    line-height: 1;
+    line-height: 1.3;
     color: var(--tt-toc-sidebar-text-color);
     text-decoration: none;
     border-radius: var(--tt-radius-xs);
@@ -182,18 +167,14 @@
     text-overflow: ellipsis;
     user-select: none;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: color 0.15s ease, background-color 0.15s ease;
 
-    // Central calculation: Base * (Depth - 1) * Factor
     margin-inline-start: calc(
       var(--toc-indent) * (var(--toc-depth, 1) - 1) * var(--toc-depth-factor)
     );
 
     &:hover {
       background-color: var(--tt-toc-sidebar-bg-hover-color);
-    }
-
-    &:hover:not(&--active) {
       color: var(--tt-toc-sidebar-text-hover-color);
     }
 
@@ -202,25 +183,12 @@
       font-weight: 500;
     }
 
-    // Fallback mappings
-    &[data-depth="1"] {
-      --toc-depth: 1;
-    }
-    &[data-depth="2"] {
-      --toc-depth: 2;
-    }
-    &[data-depth="3"] {
-      --toc-depth: 3;
-    }
-    &[data-depth="4"] {
-      --toc-depth: 4;
-    }
-    &[data-depth="5"] {
-      --toc-depth: 5;
-    }
-    &[data-depth="6"] {
-      --toc-depth: 6;
-    }
+    &[data-depth="1"] { --toc-depth: 1; }
+    &[data-depth="2"] { --toc-depth: 2; }
+    &[data-depth="3"] { --toc-depth: 3; }
+    &[data-depth="4"] { --toc-depth: 4; }
+    &[data-depth="5"] { --toc-depth: 5; }
+    &[data-depth="6"] { --toc-depth: 6; }
   }
 
   /* =========================
@@ -235,28 +203,97 @@
   }
 
   /* =========================
-     Interactions / media
+     Wide screens: always-visible TOC
      ========================= */
+  @media screen and (min-width: 1280px) {
+    pointer-events: auto;
 
-  /* Pointer-hover devices */
-  @media (hover: hover) {
-    &-wrapper:hover &-nav {
-      pointer-events: auto;
-      transform: translateX(0);
-      opacity: 1;
+    &-wrapper {
+      top: 5.5rem;
     }
-  }
 
-  /* Touch devices */
-  @media (hover: none) {
+    &-inner {
+      margin-right: 0;
+      padding-right: 1rem;
+    }
+
+    /* Hide progress lines — full nav is always visible */
+    &-progress {
+      display: none;
+    }
+
+    /* Nav: always visible, no popover styling */
     &-nav {
+      position: relative;
+      top: auto;
+      right: auto;
+      padding-inline: 0;
       pointer-events: auto;
-      transform: translateX(0);
+      transform: none;
       opacity: 1;
+      flex-direction: column;
+      width: 13rem;
+
+      /* "On this page" label */
+      &::before {
+        content: "On this page";
+        display: block;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: var(--tt-toc-sidebar-text-color);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding-inline: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+    }
+
+    /* Remove popover card styling */
+    &-popover {
+      background-color: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      margin-right: 0;
+      max-height: calc(100vh - 10rem);
+      padding: 0;
+
+      /* Subtle left border for visual hierarchy */
+      border-left: 1px solid var(--tt-toc-sidebar-border-color);
+      padding-left: 0.25rem;
+    }
+
+    &-item {
+      font-size: 0.8125rem;
+      padding-block: 0.3rem;
+      padding-inline: 0.5rem;
     }
   }
 
-  /* Mobile */
+  /* =========================
+     Narrow screens: hover-reveal behavior
+     ========================= */
+  @media screen and (max-width: 1279px) {
+    /* Pointer-hover devices */
+    @media (hover: hover) {
+      &-wrapper:hover &-nav {
+        pointer-events: auto;
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Touch devices */
+    @media (hover: none) {
+      &-nav {
+        pointer-events: auto;
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  }
+
+  /* Mobile: hide entirely */
   @media screen and (max-width: 768px) {
     & {
       display: none;
