@@ -1,0 +1,34 @@
+/* =====================
+     MDX TAG ATOM BLOCK
+     ===================== */
+
+.mdx-tag-block {
+  margin: 2px 0;
+  user-select: none;
+}
+
+.mdx-tag-code {
+  display: inline-block;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo",
+    "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--tt-gray-light-100, rgba(0, 0, 0, 0.05));
+  color: var(--tt-gray-light-500, #6b7280);
+  border: 1px solid var(--tt-gray-light-200, rgba(0, 0, 0, 0.08));
+  white-space: pre;
+
+  .dark & {
+    background: var(--tt-gray-dark-100, rgba(255, 255, 255, 0.05));
+    color: var(--tt-gray-dark-500, #9ca3af);
+    border-color: var(--tt-gray-dark-200, rgba(255, 255, 255, 0.08));
+  }
+}
+
+/* Selected state (when the atom node is selected via cursor) */
+.mdx-tag-block.ProseMirror-selectednode .mdx-tag-code {
+  outline: 2px solid var(--tt-blue-500, #3b82f6);
+  outline-offset: 1px;
+}

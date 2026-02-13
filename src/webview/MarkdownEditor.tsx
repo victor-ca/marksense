@@ -99,6 +99,7 @@ import {
   type FrontmatterEntry,
 } from "./frontmatterUtils"
 import { FrontmatterPanel } from "./components/FrontmatterPanel"
+import { MdxTag } from "./extensions/MdxTagExtension"
 
 /**
  * Content area that renders the editor with all menus and toolbars.
@@ -166,10 +167,7 @@ function MarkdownEditorInner() {
   const [initialParsed] = useState(() => {
     const raw = window.__INITIAL_CONTENT__ || ""
     const parsed = parseFrontmatter(raw)
-    return {
-      ...parsed,
-      processedBody: wrapJsxComponents(parsed.body),
-    }
+    return { ...parsed, processedBody: wrapJsxComponents(parsed.body) }
   })
 
   const [currentMarkdown, setCurrentMarkdown] = useState(
@@ -180,6 +178,9 @@ function MarkdownEditorInner() {
   )
   // Ref so the editor onUpdate callback always has the latest frontmatter
   const frontmatterRef = useRef(initialParsed.frontmatter)
+  // Preserve the raw YAML so we can round-trip without changing quote style etc.
+  // Set to null when the user edits frontmatter values (forces re-serialisation).
+  const rawFrontmatterRef = useRef(initialParsed.rawFrontmatter)
 
   const [rawMode, setRawMode] = useState(false)
   const [rawContent, setRawContent] = useState("")
@@ -278,6 +279,8 @@ function MarkdownEditorInner() {
       TocNode.configure({ topOffset: 48 }),
       // --- Diff highlight (inline decorations) ---
       DiffHighlight,
+      // --- MDX tag atoms (non-editable JSX tag chips) ---
+      MdxTag,
       // --- Typewise: autocorrection + inline predictions ---
       TypewiseIntegration.configure({
         apiToken: typewiseToken,
@@ -300,7 +303,11 @@ function MarkdownEditorInner() {
         const md = ed.getMarkdown()
         // Restore JSX blocks and prepend frontmatter before syncing
         const restoredBody = unwrapJsxComponents(md)
-        const full = serializeFrontmatter(frontmatterRef.current, restoredBody)
+        const full = serializeFrontmatter(
+          frontmatterRef.current,
+          restoredBody,
+          rawFrontmatterRef.current
+        )
         setCurrentMarkdown(full)
         vscode.postMessage({ type: "edit", content: full })
       }, 150)
@@ -389,6 +396,7 @@ function MarkdownEditorInner() {
         const processedBody = wrapJsxComponents(parsed.body)
         setFrontmatter(parsed.frontmatter)
         frontmatterRef.current = parsed.frontmatter
+        rawFrontmatterRef.current = parsed.rawFrontmatter
 
         isExternalUpdate.current = true
         // Temporarily wrap dispatch so the setContent transaction is
@@ -466,7 +474,11 @@ function MarkdownEditorInner() {
       // @ts-ignore — getMarkdown available via @tiptap/markdown
       const md = editor.getMarkdown()
       const restoredBody = unwrapJsxComponents(md)
-      const full = serializeFrontmatter(frontmatterRef.current, restoredBody)
+      const full = serializeFrontmatter(
+        frontmatterRef.current,
+        restoredBody,
+        rawFrontmatterRef.current
+      )
       setRawContent(full)
       rawContentOriginal.current = full
     } else {
@@ -476,6 +488,7 @@ function MarkdownEditorInner() {
         const processedBody = wrapJsxComponents(parsed.body)
         setFrontmatter(parsed.frontmatter)
         frontmatterRef.current = parsed.frontmatter
+        rawFrontmatterRef.current = parsed.rawFrontmatter
 
         isExternalUpdate.current = true
         // @ts-ignore — contentType option provided by @tiptap/markdown
@@ -496,6 +509,8 @@ function MarkdownEditorInner() {
     (entries: FrontmatterEntry[]) => {
       setFrontmatter(entries)
       frontmatterRef.current = entries
+      // User edited frontmatter → discard raw YAML, force re-serialisation
+      rawFrontmatterRef.current = null
 
       // Sync the full file content to VS Code (frontmatter + body)
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
@@ -503,7 +518,7 @@ function MarkdownEditorInner() {
         // @ts-ignore — getMarkdown available via @tiptap/markdown
         const md = editor && !editor.isDestroyed ? editor.getMarkdown() : ""
         const restoredBody = unwrapJsxComponents(md)
-        const full = serializeFrontmatter(entries, restoredBody)
+        const full = serializeFrontmatter(entries, restoredBody, null)
         setCurrentMarkdown(full)
         vscode.postMessage({ type: "edit", content: full })
       }, 150)

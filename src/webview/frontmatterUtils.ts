@@ -1,13 +1,15 @@
 /**
- * Frontmatter parsing / serialisation and MDX JSX-component wrapping.
+ * Frontmatter parsing / serialisation and MDX JSX-tag splitting.
  *
  * Frontmatter is the YAML block between two `---` lines at the very top of a
  * markdown / MDX file.  We separate it from the body so TipTap never sees it
  * and we can render a dedicated UI for it.
  *
- * JSX components (tags starting with an uppercase letter, e.g. `<Steps>`) are
- * converted into fenced code blocks before the content reaches TipTap, and
- * restored when we serialise back.
+ * JSX tags (lines starting with an uppercase component name, e.g. `<Steps>`,
+ * `</Step>`) are replaced with HTML `<div>` markers that TipTap's custom
+ * MdxTag atom node can parse and render as non-editable chips.  The markdown
+ * content *between* JSX tags passes through untouched so TipTap renders it
+ * as normal editable content.
  */
 
 // ─── Frontmatter ────────────────────────────────────────────────────────────
@@ -20,7 +22,7 @@ export interface FrontmatterEntry {
 export interface ParsedContent {
   /** null when the file has no frontmatter block */
   frontmatter: FrontmatterEntry[] | null
-  /** The raw YAML text (so we can round-trip comments / formatting) */
+  /** The raw YAML text between the `---` delimiters (preserves original formatting) */
   rawFrontmatter: string | null
   /** Everything after the closing `---` */
   body: string
@@ -63,69 +65,112 @@ export function parseFrontmatter(raw: string): ParsedContent {
 
 /**
  * Re-serialise frontmatter entries + body into a full file string.
+ *
+ * When `rawYaml` is provided (and non-null), it is used verbatim between the
+ * `---` delimiters so that the original formatting (quote style, comments,
+ * spacing) is preserved.  Pass `null` to force re-serialisation from entries
+ * (e.g. when the user has edited a value in the frontmatter panel).
  */
 export function serializeFrontmatter(
   frontmatter: FrontmatterEntry[] | null,
-  body: string
+  body: string,
+  rawYaml?: string | null
 ): string {
   if (!frontmatter || frontmatter.length === 0) return body
 
-  const yaml = frontmatter
-    .map(({ key, value }) => {
-      // Quote the value if it contains special YAML characters
-      const needsQuotes =
-        value.includes(":") ||
-        value.includes("#") ||
-        value.includes('"') ||
-        value.includes("'") ||
-        value.startsWith(" ") ||
-        value.endsWith(" ")
-      const escaped = needsQuotes
-        ? `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
-        : `"${value}"`
-      return `${key}: ${escaped}`
-    })
-    .join("\n")
+  let yaml: string
+  if (rawYaml != null) {
+    // Preserve the original YAML verbatim
+    yaml = rawYaml
+  } else {
+    // Re-serialise from entries
+    yaml = frontmatter
+      .map(({ key, value }) => {
+        const needsQuotes =
+          value.includes(":") ||
+          value.includes("#") ||
+          value.includes('"') ||
+          value.includes("'") ||
+          value.startsWith(" ") ||
+          value.endsWith(" ")
+        const escaped = needsQuotes
+          ? `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+          : `"${value}"`
+        return `${key}: ${escaped}`
+      })
+      .join("\n")
+  }
 
-  return `---\n${yaml}\n---\n${body}`
+  // Always include a blank line between frontmatter and body so TipTap's
+  // leading-whitespace trimming doesn't collapse the gap.
+  const separator = body.startsWith("\n") ? "" : "\n"
+  return `---\n${yaml}\n---\n${separator}${body}`
 }
 
-// ─── MDX JSX-component wrapping ─────────────────────────────────────────────
+// ─── MDX JSX tag splitting ──────────────────────────────────────────────────
+//
+// Instead of wrapping entire JSX blocks, we split them into individual tag
+// lines.  Each tag becomes a `<div data-type="mdx-tag">` that TipTap's
+// MdxTag atom node can parse.  The markdown content *between* tags passes
+// through untouched so TipTap renders it as normal editable content.
 
 /**
- * Matches a top-level JSX component block.
+ * Matches a single JSX tag line (opening, closing, or self-closing) where the
+ * component name starts with an uppercase letter.
  *
- * A "top-level" component is one that:
- *  - starts at the beginning of a line
- *  - opens with `<ComponentName` (uppercase first letter)
- *  - closes with `</ComponentName>`
- *
- * Self-closing tags (`<Foo />`) on a single line are also matched.
+ * Captures (on a single line, possibly with leading whitespace):
+ *   - Opening:      <Component ...>
+ *   - Closing:      </Component>
+ *   - Self-closing: <Component ... />
  */
-const JSX_BLOCK_RE =
-  /^(<([A-Z][A-Za-z0-9]*)(?:\s[^>]*)?>[\s\S]*?<\/\2>|<([A-Z][A-Za-z0-9]*)(?:\s[^>]*)?\/\s*>)/gm
+const JSX_TAG_LINE_RE =
+  /^([ \t]*<\/?[A-Z][A-Za-z0-9.]*(?:\s[^>]*)?>[ \t]*|[ \t]*<[A-Z][A-Za-z0-9.]*(?:\s[^>]*)?\/\s*>[ \t]*)$/gm
 
-const MDX_FENCE_OPEN = "```mdx-component"
-const MDX_FENCE_CLOSE = "```"
+/** HTML-encode a string for safe use in an attribute value. */
+function htmlEncode(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
+/** Decode HTML entities back to their original characters. */
+function htmlDecode(str: string): string {
+  return str
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+}
 
 /**
- * Wrap top-level JSX component blocks in fenced code blocks so TipTap can
- * display them as code.
+ * Replace individual JSX tag lines with `<div data-type="mdx-tag">` markers
+ * that TipTap's MdxTag atom node will parse.
+ *
+ * Content between tags is left as-is (normal markdown).
  */
 export function wrapJsxComponents(markdown: string): string {
-  return markdown.replace(JSX_BLOCK_RE, (match) => {
-    return `${MDX_FENCE_OPEN}\n${match}\n${MDX_FENCE_CLOSE}`
+  return markdown.replace(JSX_TAG_LINE_RE, (match) => {
+    const trimmed = match.trim()
+    const encoded = htmlEncode(trimmed)
+    return `<div data-type="mdx-tag" data-tag="${encoded}"></div>`
   })
 }
 
 /**
- * Restore JSX component blocks that were wrapped by `wrapJsxComponents`.
+ * Pattern matching the `<div data-type="mdx-tag" ...>` markers in the
+ * serialised markdown output from TipTap.
+ */
+const MDX_DIV_RE =
+  /<div data-type="mdx-tag" data-tag="([^"]*)">\s*<\/div>/g
+
+/**
+ * Restore JSX tag lines from the `<div data-type="mdx-tag">` markers that
+ * TipTap's markdown serialiser produces.
  */
 export function unwrapJsxComponents(markdown: string): string {
-  // Match code fences we inserted, being careful with the backtick escaping
-  const fenceRe = new RegExp(
-    "```mdx-component\\r?\\n([\\s\\S]*?)\\r?\\n```",
-    "g"
-  )
-  return markdown.replace(fenceRe, (_match, inner: string) => inner)
+  return markdown.replace(MDX_DIV_RE, (_match, encoded: string) => {
+    return htmlDecode(encoded)
+  })
 }
