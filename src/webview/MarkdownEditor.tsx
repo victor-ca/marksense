@@ -188,6 +188,12 @@ function MarkdownEditorInner() {
 
   const typewiseToken = window.__SETTINGS__?.typewiseToken || ""
 
+  // Buffer of recently sent content so we can detect echoed updates
+  // (VS Code sends the content back after writing it to disk).
+  // A Set rather than a single ref because the user may keep typing,
+  // causing multiple sends before the first echo arrives.
+  const sentToHostBufferRef = useRef(new Set<string>())
+
   const editor = useEditor({
     immediatelyRender: true,
     editorProps: {
@@ -309,6 +315,10 @@ function MarkdownEditorInner() {
           rawFrontmatterRef.current
         )
         setCurrentMarkdown(full)
+        sentToHostBufferRef.current.add(full)
+        if (sentToHostBufferRef.current.size > 10) {
+          sentToHostBufferRef.current.delete(sentToHostBufferRef.current.values().next().value)
+        }
         vscode.postMessage({ type: "edit", content: full })
       }, 150)
     },
@@ -388,18 +398,46 @@ function MarkdownEditorInner() {
   }, [editor])
 
   // --- Listen for external content updates from VS Code ---
+  //
+  // VS Code sends "update" messages in two scenarios:
+  //   1. Echo: the webview edited content → VS Code wrote it to disk →
+  //      file watcher detected the change → VS Code sends it back.
+  //   2. External change: another process (git, formatter, user editing
+  //      the raw file) modified the file on disk.
+  //
+  // For case 1 we must skip setContent — it replaces the entire ProseMirror
+  // document, destroying the cursor position and any in-flight autocorrections.
+  // We detect echoes by checking sentToHostBufferRef (a Set of recently sent
+  // content strings). When the user types fast or autocorrections fire between
+  // sends, multiple versions may be in flight simultaneously; the Set ensures
+  // we recognise any of them.
+  //
+  // For case 2 we apply setContent and restore the cursor to its previous
+  // position (clamped to the new document size).
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       const message = event.data
       if (message.type === "update" && editor && !editor.isDestroyed) {
         // Re-parse frontmatter from the incoming full-file content
         const parsed = parseFrontmatter(message.content)
-        const processedBody = wrapJsxComponents(parsed.body)
         setFrontmatter(parsed.frontmatter)
         frontmatterRef.current = parsed.frontmatter
         rawFrontmatterRef.current = parsed.rawFrontmatter
 
+        // Skip setContent when this is just an echo of our own edit —
+        // VS Code writes the file and sends the content back, but the
+        // document already has this content. Replacing it would destroy
+        // the cursor position and cause a visible flicker.
+        if (sentToHostBufferRef.current.has(message.content)) {
+          sentToHostBufferRef.current.delete(message.content)
+          setCurrentMarkdown(message.content)
+          return
+        }
+
+        const processedBody = wrapJsxComponents(parsed.body)
+
         isExternalUpdate.current = true
+        const cursorBefore = editor.state.selection.anchor
         // Temporarily wrap dispatch so the setContent transaction is
         // marked as non-undoable (external syncs shouldn't pollute undo stack)
         const origDispatch = editor.view.dispatch.bind(editor.view)
@@ -414,6 +452,18 @@ function MarkdownEditorInner() {
         })
         setCurrentMarkdown(message.content)
         editor.view.dispatch = origDispatch
+
+        // Restore cursor position — setContent replaces the whole document
+        // and loses the selection. Clamp to new doc size in case it shrank.
+        try {
+          const newDoc = editor.state.doc
+          const clampedPos = Math.min(cursorBefore, newDoc.content.size)
+          const sel = TextSelection.near(newDoc.resolve(clampedPos))
+          const restoreTr = editor.state.tr.setSelection(sel)
+          restoreTr.setMeta("addToHistory", false)
+          editor.view.dispatch(restoreTr)
+        } catch { /* doc structure may differ too much — accept the jump */ }
+        console.debug("[Typewise] external content sync (real change) — cursor:", { before: cursorBefore, after: editor.state.selection.anchor, docSize: editor.state.doc.content.size })
         requestAnimationFrame(() => {
           isExternalUpdate.current = false
         })
@@ -524,6 +574,10 @@ function MarkdownEditorInner() {
         const restoredBody = unwrapJsxComponents(md)
         const full = serializeFrontmatter(entries, restoredBody, null)
         setCurrentMarkdown(full)
+        sentToHostBufferRef.current.add(full)
+        if (sentToHostBufferRef.current.size > 10) {
+          sentToHostBufferRef.current.delete(sentToHostBufferRef.current.values().next().value)
+        }
         vscode.postMessage({ type: "edit", content: full })
       }, 150)
     },

@@ -12,6 +12,19 @@
  *   - Shows ghost text at cursor.
  *   - If typed chars match prediction prefix → advance overlap, skip API call.
  *   - Tab to accept, Esc to dismiss.
+ *
+ * Cursor stability:
+ *   ProseMirror's tr.insertText(text, from, to) internally calls
+ *   selectionToInsertionEnd(), which moves the cursor to the end of the
+ *   replaced range. Because corrections are applied asynchronously (after
+ *   an API round-trip), the user's cursor has moved on by then. Every
+ *   correction insertText is therefore followed by restoreSelection() to
+ *   map the original cursor position through the change.
+ *
+ *   Decorations (underlines, ghost text) are only rebuilt when the
+ *   corrections or prediction data actually change — not on every
+ *   meta-only transaction. Unnecessary decoration rebuilds cause DOM
+ *   mutations that can displace the browser selection.
  */
 
 import { Extension } from "@tiptap/core"
@@ -649,14 +662,18 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
         apply(tr, prev, _oldState, newState): TypewisePluginState {
           const meta = tr.getMeta(typewisePluginKey)
 
-          // Map correction positions through the transaction
-          let corrections = prev.corrections
-            .map((c) => ({
-              ...c,
-              from: tr.mapping.map(c.from),
-              to: tr.mapping.map(c.to),
-            }))
-            .filter((c) => c.from < c.to)
+          // Map correction positions only when the document changed;
+          // skipping this for meta-only transactions avoids rebuilding
+          // decorations (and the DOM mutations that can displace the cursor).
+          let corrections = tr.docChanged
+            ? prev.corrections
+                .map((c) => ({
+                  ...c,
+                  from: tr.mapping.map(c.from, 1),
+                  to: tr.mapping.map(c.to, -1),
+                }))
+                .filter((c) => c.from < c.to)
+            : prev.corrections
 
           let activeCorrection = prev.activeCorrection
           let prediction = prev.prediction
@@ -742,25 +759,28 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
             }
           }
 
-          // ── Only remove corrections if the edit is INSIDE the correction ──
-          // (not just adjacent — typing after a corrected word should not remove it)
+          // ── Remove corrections whose text no longer matches ──
+          // When the user edits (types into or deletes from) a corrected word,
+          // the text at the mapped correction range will diverge from currentValue.
+          // Also detect word extension: if a word character now sits right at
+          // a correction boundary (e.g. user appended letters), the word is
+          // changing and the correction is stale.
           if (tr.docChanged && !meta) {
-            tr.steps.forEach((step: any) => {
-              if (step.from != null && step.to != null) {
-                // Map the step's original positions to the OLD state
-                const editFrom = step.from
-                const editTo = step.to
-                // Only remove corrections where the edit is strictly inside
-                corrections = corrections.filter((c) => {
-                  // Check if edit range overlaps INSIDE the correction (not at boundaries)
-                  const editInsideCorrection =
-                    editFrom < c.to && editTo > c.from &&
-                    !(editFrom >= c.to) && !(editTo <= c.from)
-                  // But allow edits right at the boundary (cursor after correction)
-                  const isAtBoundary = editFrom === c.to || editTo === c.from
-                  return !editInsideCorrection || isAtBoundary
-                })
+            corrections = corrections.filter((c) => {
+              if (c.from < 0 || c.to > newState.doc.content.size) return false
+              const textNow = newState.doc.textBetween(c.from, c.to, "")
+              if (textNow !== c.currentValue) return false
+              // Word extended at the end? (e.g. user typed more letters after the word)
+              if (c.to < newState.doc.content.size) {
+                const charAfter = newState.doc.textBetween(c.to, c.to + 1, "")
+                if (/\w/.test(charAfter)) return false
               }
+              // Word extended at the start?
+              if (c.from > 0) {
+                const charBefore = newState.doc.textBetween(c.from - 1, c.from, "")
+                if (/\w/.test(charBefore)) return false
+              }
+              return true
             })
             if (
               activeCorrection &&
@@ -770,7 +790,11 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
             }
           }
 
-          const decorations = buildDecorations(newState.doc, corrections, prediction)
+          // Only rebuild decorations (and trigger DOM mutations) when the
+          // visual state actually changed — not on every meta-only transaction.
+          const decorations = (corrections !== prev.corrections || prediction !== prev.prediction || tr.docChanged)
+            ? buildDecorations(newState.doc, corrections, prediction)
+            : prev.decorations
 
           return { corrections, activeCorrection, prediction, decorations, predictionSpacePos }
         },
@@ -854,6 +878,28 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
           },
         },
 
+        // Trigger spellcheck + grammar when pressing Enter (new paragraph).
+        // ProseMirror handles Enter by splitting the block, so handleTextInput
+        // never fires — we need handleKeyDown to catch it.
+        // We capture the text and call the APIs directly because after Enter
+        // the cursor moves to the new (empty) block; a debounced
+        // scheduleGrammarCheck would read from the wrong paragraph.
+        handleKeyDown(view, event) {
+          if (event.key === "Enter" && opts.autocorrect) {
+            const { $from } = view.state.selection
+            const blockStart = $from.start()
+            const textBeforeCursor = view.state.doc.textBetween(blockStart, $from.pos, "")
+            if (textBeforeCursor.trim().length >= 2) {
+              checkFinalWord(textBeforeCursor, blockStart)
+            }
+            if (textBeforeCursor.trim().length >= 3) {
+              const fullText = view.state.doc.textBetween(0, $from.pos, "\n")
+              checkGrammar(textBeforeCursor, blockStart, fullText)
+            }
+          }
+          return false
+        },
+
         // Trigger corrections on word boundaries + grammar on sentence end
         handleTextInput(view, from, _to, text) {
           // Smart space: if we just inserted a trailing space after a prediction
@@ -919,6 +965,26 @@ export const TypewiseIntegration = Extension.create<TypewiseOptions>({
       view() {
         return {
           update(view, prevState) {
+            // ── Cursor-jump detector ──────────────────────────────────
+            const prevAnchor = prevState.selection.anchor
+            const newAnchor = view.state.selection.anchor
+            if (Math.abs(newAnchor - prevAnchor) > 3) {
+              const docChanged = !prevState.doc.eq(view.state.doc)
+              const prevPs = typewisePluginKey.getState(prevState) as TypewisePluginState | undefined
+              const newPs = typewisePluginKey.getState(view.state) as TypewisePluginState | undefined
+              console.debug("[Typewise] cursor jump:", {
+                from: prevAnchor,
+                to: newAnchor,
+                delta: newAnchor - prevAnchor,
+                docChanged,
+                docSize: view.state.doc.content.size,
+                nearEnd: newAnchor > view.state.doc.content.size - 3,
+                corrections: { before: prevPs?.corrections.length ?? 0, after: newPs?.corrections.length ?? 0 },
+                predictionChanged: !!prevPs?.prediction !== !!newPs?.prediction,
+                popupChanged: !!prevPs?.activeCorrection !== !!newPs?.activeCorrection,
+              })
+            }
+
             if (!prevState.doc.eq(view.state.doc)) {
               if (opts.predictions) {
                 const ps = typewisePluginKey.getState(view.state)
