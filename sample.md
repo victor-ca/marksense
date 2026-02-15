@@ -86,6 +86,10 @@ $$
 
 Drag and drop an image onto the editor, or type `/image` to upload one. Images are saved next to your Markdown file in an `images/` folder.
 
+![Marksense](icon.png)
+
+![Marksense editor screenshot](screenshot.png)
+
 ## Emoji
 
 Type `:` followed by a name to insert emoji inline — for example `:rocket:` or `:wave:`.
