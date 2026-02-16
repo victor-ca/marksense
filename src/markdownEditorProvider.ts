@@ -433,6 +433,7 @@ export class MarkdownEditorProvider
     // Tiptap .dark class in sync at all times.
     (function() {
       function syncTheme() {
+        if (document.documentElement.dataset.themeOverride) return;
         var isDark = document.body.classList.contains('vscode-dark');
         document.documentElement.classList.toggle('dark', isDark);
       }

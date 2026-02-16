@@ -1,4 +1,5 @@
 import { WidthToggle } from "@/components/tiptap-templates/notion-like/notion-like-editor-width-toggle"
+import { ThemeToggle } from "@/components/tiptap-templates/notion-like/notion-like-editor-theme-toggle"
 
 // --- Tiptap UI ---
 import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button"
@@ -98,6 +99,7 @@ export function EditorActions({ rawMode, onToggleRawMode }: EditorActionsProps) 
       <Separator />
 
       <WidthToggle />
+      <ThemeToggle />
     </>
   )
 }
